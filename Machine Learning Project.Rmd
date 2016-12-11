@@ -1,0 +1,168 @@
+---
+title: "Practical Machine Learning"
+author: "Luis Paz"
+date: "10 December 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Prediction Assignment Writeup
+
+### What you should submit
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+### Peer Review Portion
+
+Your submission for the Peer Review portion should consist of a link to a Github repo with your R markdown and compiled HTML file describing your analysis. Please constrain the text of the writeup to < 2000 words and the number of figures to be less than 5. It will make it easier for the graders if you submit a repo with a gh-pages branch so the HTML page can be viewed online (and you always want to make it easy on graders :-).
+
+### Course Project Prediction Quiz Portion
+
+Apply your machine learning algorithm to the 20 test cases available in the test data above and submit your predictions in appropriate format to the Course Project Prediction Quiz for automated grading.
+
+### Reproducibility
+
+Due to security concerns with the exchange of R code, your code will not be run during the evaluation by your classmates. Please be sure that if they download the repo, they will be able to view the compiled HTML version of your analysis.
+
+### Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+### How I Built the Model
+After cleaning the Data about personal activity from accelerometers on the belt, forearm, arm, and dumbell of 6 participants, I identied two models, decision tree and random forest algorithms, to predict the manner in which they did the exercise. The model with higher accuracy was the final predict class variable. The class A corresponds exactly according to the specification of the exercise and the others classes corresponds to common mistakes.  
+
+### Cross Validation
+I used the training (60%) and the test (40%) set of the original data to validate each model.
+
+### Data
+
+The training data for this project are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+### Loading Libraries
+
+#### Classification and Regression Training
+```{r echo=TRUE}
+library(caret)
+```
+
+#### Random Forest Algorithm
+```{r echo=TRUE}
+library(randomForest)
+```
+
+#### Recursive Partitioning and Regression Trees
+```{r echo=TRUE}
+library(rpart)
+```
+
+#### Decision Tree Plot
+```{r echo=TRUE}
+library(rpart.plot)
+```
+
+### Loading Training and Test Data
+```{r echo=TRUE}
+url_training <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+training_data <- read.csv(url_training,na.strings=c("NA","#DIV/0!",""))
+training_data <- training_data[colSums(is.na(training_data))==0]
+url_test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+test_data <- read.csv(url_test,na.strings=c("NA","#DIV/0!",""))
+test_data <- test_data[colSums(is.na(test_data))==0]
+```
+
+### Summary Training and Test Data 
+```{r echo=TRUE}
+summary(training_data)
+summary(test_data)
+```
+
+### Cleaning Training and Test Data
+```{r echo=TRUE}
+training_data <- training_data[,-c(1:7)]
+test_data <- test_data[,-c(1:7)]
+```
+
+### Dimensional Training and Test Data 
+```{r echo=TRUE}
+dim(training_data)
+dim(test_data)
+```
+
+### Prediction "Classe" Variable  of Training Data 
+```{r echo=TRUE}
+summary(training_data$classe)
+summary(test_data$classe)
+```
+
+### Partition Training and Test Data
+```{r echo=TRUE}
+data_partition <- createDataPartition(y=training_data$classe, p=0.6,list=FALSE)
+training <- training_data[data_partition, ]
+test <- training_data[-data_partition, ]
+dim(training)
+dim(test)
+```
+
+Six young health participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in five different fashions: exactly according to the specification (Class A), throwing the elbows to the front (Class B), lifting the dumbbell only halfway (Class C), lowering the dumbbell only halfway (Class D) and throwing the hips to the front (Class E).
+
+### Plot of "Classe" Variable Levels
+The classes appear slightly unbalanced with class A with more observations.
+```{r echo=FALSE}
+plot(training$classe, col="light blue", main="Plot of Classe Variable Levels", xlab="Excercise Class", ylab="Counts")
+```
+
+### Predicting with Decision Tree Model
+```{r echo=TRUE}
+model_dt <- rpart(classe ~ ., data = training, method = "class")
+rpart.plot(model_dt, main = "Decision Tree", extra = 108, under = TRUE)
+pred_rpart <- predict(model_dt, test, type = "class")
+confusionMatrix(pred_rpart, test$classe)
+```
+
+### Predicting with Random Forest Model
+```{r echo=TRUE}
+model_f <- randomForest(classe ~ ., data = training, method = "class")
+pred_forest <- predict(model_f, test, type = "class")
+confusionMatrix(pred_forest, test$classe)
+```
+
+### Plot Random Forest Model
+```{r echo=TRUE}
+plot(pred_forest, log = "y", lwd = 2, main = "Random forest accuracy", xlab = "Predictors", 
+    ylab = "Accuracy")
+```
+
+### Expected Out of Sample Error and Random Forest Model Submission
+The Expected Out of Sample Error correspond to 1-accuracy in the cross validation data. The accuracy of Random Forest Model (99.2%) is better than the Decision Tree Model (74.8%).  
+```{r echo=TRUE}
+OutofSampleError <- sum(pred_forest == test$classe)/length(pred_forest)
+OutofSampleError
+OutofSampleError <- 1 - OutofSampleError
+OutofSampleError
+paste0("Out of Sample Error: ", round(OutofSampleError * 100, digits = 2), "%")
+final_predict <- predict(model_f, test_data, type = "class")
+```
+
+### Write Files for Random Forest Model Submission
+The model was used to predict the "classe" variable in the test dataset of 20 observations.
+```{r echo=TRUE}
+write_files <- function(x){
+        n = length (x)
+for(i in 1:n) {
+        filename = paste0("Observation_",i,".txt")
+        write.table(x[i], file = filename, quote = FALSE, row.names = FALSE, col.names = FALSE)
+}
+}
+write_files(final_predict)
+```
